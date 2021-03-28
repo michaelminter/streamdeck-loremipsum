@@ -25,6 +25,8 @@
     onKeyUp: function (context, settings, coordinates, userDesiredState) {
       const command = `faker.${settings.setClass}.${settings.setMethod}()`;
       console.log(eval(command));
+      // process.std.out(eval(command));
+      // document.write(eval(command));
     },
 
     onWillAppear: function (context, settings, coordinates) {
