@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8"/>
+    <title>com.michaelminter.loremipsum PI</title>
+    <link rel="stylesheet" href="sdpi.css">
+    <script src="common.js"></script>
+</head>
+
+<body>
+<div class="sdpi-wrapper">
+    <div type="select" class="sdpi-item">
+        <div class="sdpi-item-label">Module</div>
+        <select class="sdpi-item-value select setvalueSelect" onchange="fillMethodSelect(event.target.value, 'setClass')"></select>
+    </div>
+
+    <div type="select" class="sdpi-item">
+        <div class="sdpi-item-label">Method</div>
+        <select id="setMethodSelect" class="sdpi-item-value select setMethodSelect" onchange="sendValueToPlugin(event.target.value, 'setMethod')"></select>
+    </div>
+</div>
+
+<script src="./faker.min.js"></script>
+<script>
+  const oValueSelector = document.querySelector(".setvalueSelect");
+  const methodSelect = document.getElementById("setMethodSelect");
+  const modules = {}
+  let websocket = null;
+  let pluginAction = null;
+  let uuid = '';
+
+  // if ($SD) {
+  //   $SD.on('connected', function (jsonObj) {
+  //     console.log(jsonObj);
+  //     uuid = jsonObj['uuid'];
+  //     if (jsonObj.hasOwnProperty('actionInfo')) {
+  //       pluginAction = jsonObj.actionInfo['action'];
+  //     }
+  //   });
+  // };
+
+  connectElgatoStreamDeckSocket = (inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) => {
+    const { action, payload: { settings } } = JSON.parse(inActionInfo);
+
+    pluginAction = action;
+    uuid = inUUID;
+
+    websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+    // if connection was established, the websocket sends
+    // an 'onopen' event, where we need to register our PI
+    websocket.onopen = function () {
+      var json = {
+        event: inRegisterEvent,
+        uuid: inUUID
+      };
+      // register property inspector to Stream Deck
+      websocket.send(JSON.stringify(json));
+    };
+
+    // Build modules
+    Object.keys(faker).sort().forEach((module) => {
+      const methods = []
+      for (var method in faker[module]) {
+        if (typeof faker[module][method] === "function") {
+          methods.push(method);
+        }
+      }
+      if (methods.length > 0) {
+        modules[module] = methods.sort();
+      }
+    })
+
+    // Empty select element
+    oValueSelector.length = 0;
+
+    // Generate options for moduleSelect
+    const moduleKeys = [''].concat(Object.keys(modules));
+    const defaultKey = settings.setClass || Object.keys(modules)[0];
+    moduleKeys.forEach((module) => {
+      let option = document.createElement("option");
+      option.value = module;
+      option.text = module.replace(/^\w/, (c) => c.toUpperCase());
+      if (module === defaultKey) option.selected = true;
+      return oValueSelector.add(option);
+    })
+
+    if (settings.setMethod) {
+      fillMethodSelect(settings.setClass, settings.setMethod);
+    }
+  }
+
+  fillMethodSelect = (module, defaultMethod = null) => {
+    // Empty select element
+    methodSelect.length = 0;
+
+    // Generates options for methodSelectstrea
+    modules[module].forEach((method) => {
+      let option = document.createElement("option");
+      option.value = method;
+      option.text = method.replace(/^\w/, (c) => c.toUpperCase());
+      if (method === defaultMethod) option.selected = true;
+      methodSelect.add(option);
+    })
+    if (defaultMethod === null) {
+      sendValueToPlugin(modules[module][0], 'setMethod');
+    }
+  }
+
+  sendValueToPlugin = (value, param) => {
+    // if ($SD && $SD.connection) {
+    //   const payload = {};
+    //   if (param) {
+    //     payload.setClass = oValueSelector.value;
+    //     payload[param] = value;
+    //   }
+    //   $SD.api.sendToPlugin(uuid, pluginAction, payload);
+    // }
+    if (websocket && (websocket.readyState === 1)) {
+      const json = {
+        'action': pluginAction,
+        'event': 'sendToPlugin',
+        'context': uuid,
+        'payload': {
+          'setClass': oValueSelector.value,
+          'setMethod': methodSelect.value
+        }
+      };
+      websocket.send(JSON.stringify(json));
+    }
+  }
+</script>
+
+</body>
+
+</html>

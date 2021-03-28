@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>com.michaelminter.loremipsum</title>
+    <meta charset="utf-8"/>
+</head>
+
+<body>
+<script src="./faker.min.js"></script>
+<script>
+  var websocket = null;
+  var pluginUUID = null;
+  var settingsCache = {};
+
+  var DestinationEnum = Object.freeze({"HARDWARE_AND_SOFTWARE": 0, "HARDWARE_ONLY": 1, "SOFTWARE_ONLY": 2})
+
+  var loremIpsumAction = {
+
+    type: "com.michaelminter.loremipsum.action",
+
+    onKeyDown: function (context, settings, coordinates, userDesiredState) {
+    },
+
+    onKeyUp: function (context, settings, coordinates, userDesiredState) {
+      const command = `faker.${settings.setClass}.${settings.setMethod}()`;
+      console.log(eval(command));
+    },
+
+    onWillAppear: function (context, settings, coordinates) {
+      // let keyPressCounter = 0;
+      // if (settings != null && settings.hasOwnProperty('keyPressCounter')) {
+      //   keyPressCounter = settings["keyPressCounter"];
+      // }
+      // settingsCache[context] = {'keyPressCounter': keyPressCounter};
+      // this.SetTitle(context, keyPressCounter);
+    },
+
+    SetTitle: function (context, keyPressCounter) {
+      var json = {
+        "event": "setTitle",
+        "context": context,
+        "payload": {
+          "title": "" + keyPressCounter,
+          "target": DestinationEnum.HARDWARE_AND_SOFTWARE
+        }
+      };
+      websocket.send(JSON.stringify(json));
+    },
+
+    SetSettings: function (context, settings) {
+      var json = {
+        "event": "setSettings",
+        "context": context,
+        "payload": settings
+      };
+      websocket.send(JSON.stringify(json));
+    },
+
+    AddToSettings: function (context, newSettings) {
+      settingsCache[context]
+    }
+  };
+
+  function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
+    pluginUUID = inPluginUUID
+
+    // Open the web socket
+    websocket = new WebSocket("ws://127.0.0.1:" + inPort);
+
+    function registerPlugin(inPluginUUID) {
+      var json = {
+        "event": inRegisterEvent,
+        "uuid": inPluginUUID
+      };
+      websocket.send(JSON.stringify(json));
+    };
+
+    websocket.onopen = function () {
+      // WebSocket is connected, send message
+      registerPlugin(pluginUUID);
+    };
+
+    websocket.onmessage = function (evt) {
+      // Received message from Stream Deck
+      var jsonObj = JSON.parse(evt.data);
+      var event = jsonObj['event'];
+      var action = jsonObj['action'];
+      var context = jsonObj['context'];
+      var jsonPayload = jsonObj['payload'] || {};
+
+      // console.log(event, jsonObj);
+
+      if (event == "keyDown") {
+        var settings = jsonPayload['settings'];
+        var coordinates = jsonPayload['coordinates'];
+        var userDesiredState = jsonPayload['userDesiredState'];
+        loremIpsumAction.onKeyDown(context, settings, coordinates, userDesiredState);
+      } else if (event == "keyUp") {
+        var settings = jsonPayload['settings'];
+        var coordinates = jsonPayload['coordinates'];
+        var userDesiredState = jsonPayload['userDesiredState'];
+        loremIpsumAction.onKeyUp(context, settings, coordinates, userDesiredState);
+      } else if (event == "willAppear") {
+        var settings = jsonPayload['settings'];
+        var coordinates = jsonPayload['coordinates'];
+        loremIpsumAction.onWillAppear(context, settings, coordinates);
+      } else if (event == "sendToPlugin") {
+        if (jsonPayload.hasOwnProperty('setMethod')) {
+          loremIpsumAction.SetSettings(context, jsonPayload);
+        }
+      }
+    };
+
+    websocket.onclose = function () {
+      // Websocket is closed
+    };
+  };
+</script>
+
+</body>
+
+</html>
