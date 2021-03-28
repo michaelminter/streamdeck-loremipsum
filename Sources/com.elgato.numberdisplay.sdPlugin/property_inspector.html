@@ -30,16 +30,6 @@
   let pluginAction = null;
   let uuid = '';
 
-  // if ($SD) {
-  //   $SD.on('connected', function (jsonObj) {
-  //     console.log(jsonObj);
-  //     uuid = jsonObj['uuid'];
-  //     if (jsonObj.hasOwnProperty('actionInfo')) {
-  //       pluginAction = jsonObj.actionInfo['action'];
-  //     }
-  //   });
-  // };
-
   connectElgatoStreamDeckSocket = (inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) => {
     const { action, payload: { settings } } = JSON.parse(inActionInfo);
 
@@ -108,14 +98,6 @@
   }
 
   sendValueToPlugin = (value, param) => {
-    // if ($SD && $SD.connection) {
-    //   const payload = {};
-    //   if (param) {
-    //     payload.setClass = oValueSelector.value;
-    //     payload[param] = value;
-    //   }
-    //   $SD.api.sendToPlugin(uuid, pluginAction, payload);
-    // }
     if (websocket && (websocket.readyState === 1)) {
       const json = {
         'action': pluginAction,
